@@ -148,5 +148,5 @@ mail._domainkey.smtp.domain.tld. IN	TXT	( "v=DKIM1; h=sha256; k=rsa; "
 ```
 
 ## License
-postfix-relay is licensed under the MIT license. See [LICENSE](LICENSE) for the
+postfix-relay-xoauth2 is licensed under the MIT license. See [LICENSE](LICENSE) for the
 full license text.
