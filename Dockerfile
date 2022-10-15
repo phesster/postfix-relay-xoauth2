@@ -1,5 +1,6 @@
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 ENV DEBCONF_NOWARNINGS=yes
+ENV DEBIAN_FRONTEND=noninteractive
 MAINTAINER Patrick Hess phesster@gmail.com
 
 #
@@ -13,9 +14,15 @@ echo "path-exclude=/usr/share/locale/*\npath-exclude=/usr/share/man/*\npath-excl
 apt-get update && \
 apt-get upgrade -y
 
+COPY etc/apt/keyrings/sasl-xoauth2.gpg /etc/apt/keyrings/sasl-xoauth2.gpg
+COPY etc/apt/keyrings/sasl-xoauth2.gpg /etc/apt/trusted.gpg.d/sasl-xoauth2-ubuntu-stable.gpg
+RUN chown root:root /etc/apt/keyrings/sasl-xoauth2.gpg /etc/apt/trusted.gpg.d/sasl-xoauth2-ubuntu-stable.gpg
+
 RUN \
   apt-get install -y software-properties-common apt-transport-https && \
-  add-apt-repository -y ppa:sasl-xoauth2/stable && \
+  add-apt-repository -y ppa:sasl-xoauth2/stable || true
+
+RUN \
   apt-get update && \
   apt-get -y --no-install-recommends install \
     procps \
@@ -25,7 +32,7 @@ RUN \
     opendkim-tools \
     ca-certificates \
     libcurl4 \
-    libjsoncpp1 \
+    libjsoncpp25 \
     sasl2-bin \
     libgcc-s1 \
     sasl-xoauth2 \
@@ -43,6 +50,10 @@ update-ca-certificates && \
 mkdir -p /var/spool/postfix/etc/ssl/certs && \
 cp -p /etc/ssl/certs/ca-certificates.crt /var/spool/postfix/etc/ssl/certs/ && \
 chown postfix:postfix /var/spool/postfix/etc/tokens/sender.tokens.json
+
+RUN \
+sed -i ' s,-name,\\( -name, ' /usr/lib/postfix/configure-instance.sh && \
+sed -i ' s,-not,-o -name \\\*.crt \\) -not, ' /usr/lib/postfix/configure-instance.sh
 
 
 # Default config:
