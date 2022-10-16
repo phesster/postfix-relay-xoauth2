@@ -14,6 +14,14 @@ echo "path-exclude=/usr/share/locale/*\npath-exclude=/usr/share/man/*\npath-excl
 apt-get update && \
 apt-get upgrade -y
 
+###
+### KeyID noted at https://launchpad.net/~sasl-xoauth2/+archive/ubuntu/stable
+###
+### gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 0xC965EC3EDD039448570A75672E733F026005F791 && \
+###   gpg --export C965EC3EDD039448570A75672E733F026005F791 | \
+###     gpg --dearmor --output etc/apt/keyrings/sasl-xoauth2.gpg
+###
+
 COPY etc/apt/keyrings/sasl-xoauth2.gpg /etc/apt/keyrings/sasl-xoauth2.gpg
 COPY etc/apt/keyrings/sasl-xoauth2.gpg /etc/apt/trusted.gpg.d/sasl-xoauth2-ubuntu-stable.gpg
 RUN chown root:root /etc/apt/keyrings/sasl-xoauth2.gpg /etc/apt/trusted.gpg.d/sasl-xoauth2-ubuntu-stable.gpg
