@@ -96,7 +96,7 @@ my hackneyed way to do it, you may have a better way)
 
 #### Hint for how to create the tokens
 
-This is how I generated the tokens on another host (Your Mileable May Vary).
+This is how I generated the tokens on another host (Your Mileage May Vary).
 This is only a _HINT_!  Please read the documetation (enumerated above).
 ```
 sasl-xoauth2-token-tool.py get-token --client-id="55XXXXXXXXXX-pXXXXXkqXXXXXXXXXXXXXXXXXXXXXXX.apps.googleusercontent.com" --client-secret="GOCSPX-XXXXXXXXXXXXXXXXXXXXXXXXXXXX" --scope="https://mail.google.com/" gmail tokens-stored-in-this-file
