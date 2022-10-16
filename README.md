@@ -1,14 +1,21 @@
-# postfix-relay
+# Overview
+
+This is an incorporation of [tarickb's SASL-OAuth2](https://github.com/tarickb/sasl-xoauth2/)
+into [mwader's Postfix-Relay](https://hub.docker.com/r/mwader/postfix-relay/)
+on top of a [Ubuntu](https://hub.docker.com/_/ubuntu) "Jammy" 22.04 base image.
+For detailed information on any of these, please read their specific 
+documentation.
+
+## postfix-relay
+
 Postfix SMTP relay docker image. Useful for sending email without using an
 external SMTP server.
 
 Default configuration is an open relay that relies on docker networking for
 protection. Be careful to not expose it publicly.
 
-## Usage
-`docker pull phesster/postfix-relay-xoauth2` or clone/build it yourself.
 
-### Postfix variables
+### Postfix variables (postfix-relay)
 
 Postfix [configuration options](http://www.postfix.org/postconf.5.html) can be set
 using `POSTFIX_<name>` environment variables. See [Dockerfile](Dockerfile) for default
@@ -22,12 +29,13 @@ You can modify master.cf using postconf with `POSTFIXMASTER_` variables. All dou
 ### Postfix master.cf variables
 
 ```
-- POSTFIXMASTER_submission__inet=submission inet n - y - - smtpd
+environment:
+- POSTFIXMASTER_submission__inet=submission inet n - y - - smtpd -o syslog_name=postfix/submission
 ```
-will produce
+will emit the following into the container and run that command
 
 ```
-postconf -Me submission/inet="submission inet n - y - - smtpd"
+postconf -Me submission/inet="submission inet n - y - - smtpd -o syslog_name=postfix/submission"
 ```
 
 ### Postfix lookup tables
@@ -41,13 +49,58 @@ environment:
     mydomain.com relay:[relay1.mydomain.com]:587
     * relay:[relay2.mydomain.com]:587
 ```
-which will generate file `/etc/postfix/transport`
+which will generate the file `/etc/postfix/transport` in the container
 ```
 gmail.com smtp
 mydomain.com relay:[relay1.mydomain.com]:587
 * relay:[relay2.mydomain.com]:587
 ```
-and run `postmap /etc/postfix/transport`.
+and run the command `postmap /etc/postfix/transport`.
+
+### Example Gratis:
+
+This is a snippet of how I initialize the container:
+```
+environment:
+  - POSTFIXMASTER_submission__inet="submission inet n - y - - smtpd -o syslog_name=postfix/submission"
+  - POSTFIX_smtpd_tls_security_level="may"
+  - POSTFIX_smtpd_reject_unlisted_recipient="no"
+  - POSTFIX_myhostname="POSTFIX"
+  - POSTFIX_smtpd_relay_restrictions="permit_mynetworks, permit_sasl_authenticated, check_relay_domains"
+  - POSTFIX_smtp_use_tls="yes"
+  - POSTFIX_smtp_sasl_auth_enable="yes"
+  - POSTFIX_smtp_sasl_security_options="noanonymous"
+  - POSTFIX_smtp_sasl_mechanism_filter="xoauth2"
+  - POSTFIX_smtp_tls_security_level="encrypt"
+  - POSTFIX_smtp_tls_CAfile="/etc/ssl/certs/ca-certificates.crt"
+  - POSTFIX_transport_maps="hash:/etc/postfix/transport"
+  - POSTMAP_transport="*       relay:[smtp.gmail.com]:587"
+  - POSTFIX_smtp_sasl_password_maps="hash:/etc/postfix/sasl_passwd"
+  - |
+    POSTMAP_sasl_passwd=
+    [smtp.gmail.com]:587   user@gmail.com:/etc/tokens/sender.tokens.json
+```
+
+Then, I initialize the SASL-XOAuth2 configuration files in the container
+from known-working existing files with these commands.  (This is just
+my hackneyed way to do it, you may have a better way)
+```
+  docker cp sasl-xoauth2.conf postfix-relay-container:/tmp
+  docker exec -it --workdir /root --user root postfix-relay-container bash -c "cat /tmp/sasl-xoauth2.conf > /etc/sasl-xoauth2.conf"
+  docker exec -it --workdir /root --user root postfix-relay-container bash -c "mkdir  /etc/tokens  /var/spool/postfix/etc/tokens"
+  docker cp sender.tokens.json postfix-relay-container:/etc/tokens/sender.tokens.json
+  docker exec -it --workdir /root --user root postfix-relay-container bash -c "chown postfix:postfix /etc/tokens/sender.tokens.json"
+  docker exec -it --workdir /root --user root postfix-relay-container bash -c "cp -p /etc/tokens/sender.tokens.json /var/spool/postfix/etc/tokens/sender.tokens.json"
+  docker exec -it --workdir /root --user root postfix-relay-container bash -c "rm -f /tmp/sasl-xoauth2.conf /tmp/sender.tokens.json"
+```
+
+#### Hint for how to create the tokens
+
+This is how I generated the tokens on another host (Your Mileable May Vary).
+This is only a _HINT_!  Please read the documetation (enumerated above).
+```
+sasl-xoauth2-token-tool.py get-token --client-id="55XXXXXXXXXX-pXXXXXkqXXXXXXXXXXXXXXXXXXXXXXX.apps.googleusercontent.com" --client-secret="GOCSPX-XXXXXXXXXXXXXXXXXXXXXXXXXXXX" --scope="https://mail.google.com/" gmail tokens-stored-in-this-file
+```
 
 ### OpenDKIM variables
 
