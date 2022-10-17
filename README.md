@@ -30,7 +30,9 @@ You can modify master.cf using postconf with `POSTFIXMASTER_` variables. All dou
 
 ```
 environment:
+...
 - POSTFIXMASTER_submission__inet=submission inet n - y - - smtpd -o syslog_name=postfix/submission
+...
 ```
 will emit the following into the container and run that command
 
@@ -43,11 +45,13 @@ postconf -Me submission/inet="submission inet n - y - - smtpd -o syslog_name=pos
 You can also create multiline [tables](http://www.postfix.org/DATABASE_README.html#types) using `POSTMAP_<filename>` like this example:
 ```
 environment:
+...
   - POSTFIX_transport_maps=hash:/etc/postfix/transport
   - |
     POSTMAP_transport=gmail.com smtp
     mydomain.com relay:[relay1.mydomain.com]:587
     * relay:[relay2.mydomain.com]:587
+...
 ```
 which will generate the file `/etc/postfix/transport` in the container
 ```
@@ -62,6 +66,7 @@ and run the command `postmap /etc/postfix/transport`.
 This is a snippet of how I initialize the container:
 ```
 environment:
+...
   - POSTFIXMASTER_submission__inet="submission inet n - y - - smtpd -o syslog_name=postfix/submission"
   - POSTFIX_smtpd_tls_security_level="may"
   - POSTFIX_smtpd_reject_unlisted_recipient="no"
@@ -79,6 +84,7 @@ environment:
   - |
     POSTMAP_sasl_passwd=
     [smtp.gmail.com]:587   user@gmail.com:/etc/tokens/sender.tokens.json
+...
 ```
 
 Then, I initialize the SASL-XOAuth2 configuration files in the container
@@ -156,7 +162,7 @@ If configuration via environment variables is not flexible enough it's possible 
 
 ### Timezone
 Wrong timestamps in log can be fixed by setting proper timezone.
-This parameter is handled by Debian base image.
+This parameter is handled by Ubuntu base image.
 
 ```
 environment:
