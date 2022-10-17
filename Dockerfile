@@ -44,6 +44,7 @@ RUN \
     sasl2-bin \
     libgcc-s1 \
     sasl-xoauth2 \
+    tzdata \
     rsyslog && \
   apt-get clean && \
   rm -rf /var/lib/apt/lists/* \
