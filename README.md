@@ -1,6 +1,6 @@
 # Overview
 
-This is an incorporation of [tarickb's SASL-OAuth2](https://github.com/tarickb/sasl-xoauth2/)
+This is an incorporation of [tarickb's SASL-XOAuth2](https://github.com/tarickb/sasl-xoauth2/)
 into [mwader's Postfix-Relay](https://hub.docker.com/r/mwader/postfix-relay/)
 on top of a [Ubuntu](https://hub.docker.com/_/ubuntu) "Jammy" 22.04 base image.
 For detailed information on any of these, please read their specific 
@@ -91,19 +91,25 @@ Then, I initialize the SASL-XOAuth2 configuration files in the container
 from known-working existing files with these commands.  (This is just
 my hackneyed way to do it, you may have a better way)
 ```
-  docker cp sasl-xoauth2.conf postfix-relay-container:/tmp
-  docker exec -it --workdir /root --user root postfix-relay-container bash -c "cat /tmp/sasl-xoauth2.conf > /etc/sasl-xoauth2.conf"
-  docker exec -it --workdir /root --user root postfix-relay-container bash -c "mkdir  /etc/tokens  /var/spool/postfix/etc/tokens"
-  docker cp sender.tokens.json postfix-relay-container:/etc/tokens/sender.tokens.json
-  docker exec -it --workdir /root --user root postfix-relay-container bash -c "chown postfix:postfix /etc/tokens/sender.tokens.json"
-  docker exec -it --workdir /root --user root postfix-relay-container bash -c "cp -p /etc/tokens/sender.tokens.json /var/spool/postfix/etc/tokens/sender.tokens.json"
-  docker exec -it --workdir /root --user root postfix-relay-container bash -c "rm -f /tmp/sasl-xoauth2.conf /tmp/sender.tokens.json"
+...
+  docker cp sasl-xoauth2.conf postfix:/tmp
+  docker exec -it --workdir /root --user root postfix bash -c "cat /tmp/sasl-xoauth2.conf > /etc/sasl-xoauth2.conf"
+  docker exec -it --workdir /root --user root postfix bash -c "chown root:postfix /etc/sasl-xoauth2.conf"
+  docker exec -it --workdir /root --user root postfix bash -c "chmod 0640 /etc/sasl-xoauth2.conf"
+  docker exec -it --workdir /root --user root postfix bash -c "mkdir  /etc/tokens  /var/spool/postfix/etc/tokens"
+  docker cp sender.tokens.json postfix:/etc/tokens/sender.tokens.json
+  docker exec -it --workdir /root --user root postfix bash -c "chown postfix:postfix /etc/tokens/sender.tokens.json"
+  docker exec -it --workdir /root --user root postfix bash -c "chmod 0640 /etc/tokens/sender.tokens.json"
+  docker exec -it --workdir /root --user root postfix bash -c "cp -p /etc/tokens/sender.tokens.json /var/spool/postfix/etc/tokens/sender.tokens.json"
+  docker exec -it --workdir /root --user root postfix bash -c "cp -p /etc/ssl/certs/ca-certificates.crt /var/spool/postfix/etc/ssl/certs/ca-certificates.crt"
+  docker exec -it --workdir /root --user root postfix bash -c "rm -f /tmp/sasl-xoauth2.conf"
+...
 ```
 
 #### Hint for how to create the tokens
 
 This is how I generated the tokens on another host (Your Mileage May Vary).
-This is only a _HINT_!  Please read the documetation (enumerated above).
+This is only a _HINT_!  Please read the documentation (enumerated above).
 ```
 sasl-xoauth2-token-tool.py get-token --client-id="55XXXXXXXXXX-pXXXXXkqXXXXXXXXXXXXXXXXXXXXXXX.apps.googleusercontent.com" --client-secret="GOCSPX-XXXXXXXXXXXXXXXXXXXXXXXXXXXX" --scope="https://mail.google.com/" gmail tokens-stored-in-this-file
 ```
