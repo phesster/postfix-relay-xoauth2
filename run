@@ -63,27 +63,28 @@ for e in ${!OPENDKIM_*} ; do
   echo "${e:9} ${!e}" >> /etc/opendkim.conf
 done
 
-trap "service postfix stop; service opendkim stop; pkill -TERM rsyslogd" SIGTERM SIGINT
+trap "service postfix stop; service opendkim stop; cat /var/spool/postfix/etc/tokens/sender.tokens.json > /etc/tokens/sender.tokens.json; pkill -TERM rsyslogd" SIGTERM SIGINT
+
+/bin/echo -e "\n\n"
+
 if [ ! -z "$OPENDKIM_DOMAINS" ] ; then
   dkimConfig
+  /bin/echo -e "starting service OpenDKIM-"$(dpkg-query --show opendkim | awk '{print $2}')" \c"
   service opendkim start
 fi
-cp -p /etc/ssl/certs/ca-certificates.crt /var/spool/postfix/etc/ssl/certs/ca-certificates.crt
+/bin/echo -e "starting service Postfix-"$(dpkg-query --show postfix | awk '{print $2}')" \c"
 service postfix start
+
+# install proper sender tokens into chroot iff neccessary
+cmp --quiet /etc/tokens/sender.tokens.json /var/spool/postfix/etc/tokens/sender.tokens.json || \
+  cp -vp /etc/tokens/sender.tokens.json /var/spool/postfix/etc/tokens/sender.tokens.json
 
 # Don't fiddle with existing config file (e.g. mounted from filesystem)
 if [ -e /etc/rsyslog.conf ]; then
-  echo "Skipping /etc/rsyslog.conf generating - file already exists"
+  echo "Skipping /etc/rsyslog.conf generation - file already exists"
 else
   # Rsyslog base
-  cat <<'EOF' > /etc/rsyslog.conf
-$ModLoad imuxsock
-$WorkDirectory /var/spool/rsyslog
-
-include(file="/etc/rsyslog.d/*.conf")
-
-*.*;auth,authpriv.none /dev/stdout
-EOF
+  /bin/echo -e '$ModLoad imuxsock\n$WorkDirectory /var/spool/rsyslog\n\ninclude(file="/etc/rsyslog.d/*.conf")\n\n*.*;auth,authpriv.none /dev/stdout\n' > /etc/rsyslog.conf
 
   if [ "${RSYSLOG_TIMESTAMP}" == 'no' ] ; then
     echo '$template noTimestampFormat,"%syslogtag%%msg%\n"' >> /etc/rsyslog.conf
@@ -105,6 +106,8 @@ EOF
   fi
 fi
 
+/bin/echo -e "launching Rsyslog-"$(dpkg-query --show rsyslog | awk '{print $2}')"\n"
 rsyslogd -n &
 wait
+cat /var/spool/postfix/etc/tokens/sender.tokens.json > /etc/tokens/sender.tokens.json
 exit 0
