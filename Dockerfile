@@ -46,7 +46,7 @@ RUN \
   rm -rf /var/lib/apt/lists/* /etc/rsyslog.conf && \
   update-ca-certificates && \
   mkdir -p /var/spool/postfix/etc/ssl/certs && \
-  cp -p /etc/ssl/certs/ca-certificates.crt /var/spool/postfix/etc/ssl/certs/ && \
+  { cp -p /etc/ssl/certs/ca-certificates.crt /var/spool/postfix/etc/ssl/certs/ || /bin/true ; } && \
   mkdir -p /etc/opendkim/keys && \
   sed -i ' s,-name,\\( -name, ' /usr/lib/postfix/configure-instance.sh && \
   sed -i ' s,-not,-o -name \\\*.crt \\) -not, ' /usr/lib/postfix/configure-instance.sh
