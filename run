@@ -53,33 +53,56 @@ rsyslogConfig()
         echo 'mail.* -/var/log/mail.log' >> /etc/rsyslog.conf
     fi
 
-    if [ -z ${RSYSLOG_REMOTE_PORT} ] ; then
-        RSYSLOG_REMOTE_PORT=514
-    fi
-    if [ "${RSYSLOG_REMOTE_TRANSPORT_PROTOCOL}" == 'tcp' ] ; then
+    if [ "${RSYSLOG_REMOTE_TRANSPORT_PROTOCOL,,}" == 'tcp' ] ; then
         RSYSLOG_REMOTE_TRANSPORT_PROTOCOL='tcp'
     else
         RSYSLOG_REMOTE_TRANSPORT_PROTOCOL='udp'
-    fi
-    if [ -z ${RSYSLOG_REMOTE_TEMPLATE} ] ; then
-        RSYSLOG_REMOTE_TEMPLATE=RSYSLOG_ForwardFormat
     fi
     if [ ! -z ${RSYSLOG_REMOTE_HOST} ] ; then
         echo "*.* action(type=\"omfwd\" target=\"${RSYSLOG_REMOTE_HOST,,}\" port=\"${RSYSLOG_REMOTE_PORT}\" protocol=\"${RSYSLOG_REMOTE_TRANSPORT_PROTOCOL}\" template=\"${RSYSLOG_REMOTE_TEMPLATE}\")" >> /etc/rsyslog.conf
     fi
 }
 
+#
+cleanExit()
+{
+    /bin/echo -e "stopping service Postfix \c"
+    service postfix stop
+    /bin/echo -e "stopping service OpenDKIM \c"
+    service opendkim stop
+    # copy sender tokens back to source iff changed
+    cmp --quiet /etc/tokens/sender.tokens.json /var/spool/postfix/etc/tokens/sender.tokens.json || \
+      cp -vp /var/spool/postfix/etc/tokens/sender.tokens.json /etc/tokens/sender.tokens.json
+    pkill -TERM rsyslogd
+}
 
-trap "service postfix stop; service opendkim stop; cat /var/spool/postfix/etc/tokens/sender.tokens.json > /etc/tokens/sender.tokens.json; pkill -TERM rsyslogd" SIGTERM SIGINT
+#
+cleanPIDs()
+{
+    rm -f \
+      /run/opendkim/opendkim.pid \
+      /run/rsyslogd.pid \
+      /var/spool/postfix/pid/master.pid
+}
+
+
+trap cleanExit  SIGTERM SIGINT
+
+
+# set defaults
+RSYSLOG_TIMESTAMP=${RSYSLOG_TIMESTAMP:-'yes'}
+RSYSLOG_LOG_TO_FILE=${RSYSLOG_LOG_TO_FILE:-'no'}
+RSYSLOG_REMOTE_PORT=${RSYSLOG_REMOTE_PORT:-'514'}
+RSYSLOG_REMOTE_TRANSPORT_PROTOCOL=${RSYSLOG_REMOTE_TRANSPORT_PROTOCOL:-'udp'}
+RSYSLOG_REMOTE_TEMPLATE=${RSYSLOG_REMOTE_TEMPLATE:-'RSYSLOG_ForwardFormat'}
+RSYSLOG_REMOTE_HOST=${RSYSLOG_REMOTE_HOST:-''}
 
 
 # Unclean container stop might leave pid files around and rsyslogd seems
 # sometimes falsely think it's already running if some other process
 # happens to have its old pid when starting.
-rm -f \
-  /run/opendkim/opendkim.pid \
-  /run/rsyslogd.pid \
-  /var/spool/postfix/pid/master.pid
+cleanPIDs
+
 
 # POSTFIX_var env -> postconf -e var=$POSTFIX_var
 for e in ${!POSTFIX_*} ; do postconf -e "${e:8}=${!e}" ; done
@@ -122,6 +145,10 @@ fi
 
 /bin/echo -e "launching Rsyslog-"$(dpkg-query --show --showformat='${Version}' rsyslog)"\n"
 rsyslogd -n &
+
 wait
-cat /var/spool/postfix/etc/tokens/sender.tokens.json > /etc/tokens/sender.tokens.json
+
+cmp --quiet /etc/tokens/sender.tokens.json /var/spool/postfix/etc/tokens/sender.tokens.json || \
+  cp -vp /var/spool/postfix/etc/tokens/sender.tokens.json /etc/tokens/sender.tokens.json
+
 exit 0
