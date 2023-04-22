@@ -69,10 +69,10 @@ trap "service postfix stop; service opendkim stop; cat /var/spool/postfix/etc/to
 
 if [ ! -z "$OPENDKIM_DOMAINS" ] ; then
   dkimConfig
-  /bin/echo -e "starting service OpenDKIM-"$(dpkg-query --show opendkim | awk '{print $2}')" \c"
+  /bin/echo -e "starting service OpenDKIM-"$(dpkg-query --show --showformat='${Version}' opendkim)" \c"
   service opendkim start
 fi
-/bin/echo -e "starting service Postfix-"$(dpkg-query --show postfix | awk '{print $2}')" \c"
+/bin/echo -e "starting service Postfix-"$(dpkg-query --show --showformat='${Version}' postfix)" \c"
 service postfix start
 
 # install proper sender tokens into chroot iff neccessary
@@ -106,7 +106,7 @@ else
   fi
 fi
 
-/bin/echo -e "launching Rsyslog-"$(dpkg-query --show rsyslog | awk '{print $2}')"\n"
+/bin/echo -e "launching Rsyslog-"$(dpkg-query --show --showformat='${Version}' rsyslog)"\n"
 rsyslogd -n &
 wait
 cat /var/spool/postfix/etc/tokens/sender.tokens.json > /etc/tokens/sender.tokens.json
