@@ -86,19 +86,19 @@ else
   # Rsyslog base
   /bin/echo -e '$ModLoad imuxsock\n$WorkDirectory /var/spool/rsyslog\n\ninclude(file="/etc/rsyslog.d/*.conf")\n\n*.*;auth,authpriv.none /dev/stdout\n' > /etc/rsyslog.conf
 
-  if [ "${RSYSLOG_TIMESTAMP}" == 'no' ] ; then
+  if [ "${RSYSLOG_TIMESTAMP,,}" == 'no' ] ; then
     echo '$template noTimestampFormat,"%syslogtag%%msg%\n"' >> /etc/rsyslog.conf
     echo '$ActionFileDefaultTemplate noTimestampFormat' >> /etc/rsyslog.conf
   fi
 
-  if [ "${RSYSLOG_LOG_TO_FILE}" == 'yes' ] ; then
+  if [ "${RSYSLOG_LOG_TO_FILE,,}" == 'yes' ] ; then
     echo 'mail.* -/var/log/mail.log' >> /etc/rsyslog.conf
   fi
 
   if [ -z ${RSYSLOG_REMOTE_PORT} ] ; then
     RSYSLOG_REMOTE_PORT=514
   fi
-  if [ "${RSYSLOG_REMOTE_TRANSPORT_PROTOCOL}" == 'tcp' ] ; then
+  if [ "${RSYSLOG_REMOTE_TRANSPORT_PROTOCOL,,}" == 'tcp' ] ; then
     RSYSLOG_REMOTE_TRANSPORT_PROTOCOL='tcp'
   else
     RSYSLOG_REMOTE_TRANSPORT_PROTOCOL='udp'
@@ -107,7 +107,7 @@ else
     RSYSLOG_REMOTE_TEMPLATE=RSYSLOG_ForwardFormat
   fi
   if [ ! -z ${RSYSLOG_REMOTE_HOST} ] ; then
-    echo "*.* action(type=\"omfwd\" target=\"${RSYSLOG_REMOTE_HOST}\" port=\"${RSYSLOG_REMOTE_PORT}\" protocol=\"${RSYSLOG_REMOTE_TRANSPORT_PROTOCOL}\" template=\"${RSYSLOG_REMOTE_TEMPLATE}\")" >> /etc/rsyslog.conf
+    echo "*.* action(type=\"omfwd\" target=\"${RSYSLOG_REMOTE_HOST,,}\" port=\"${RSYSLOG_REMOTE_PORT}\" protocol=\"${RSYSLOG_REMOTE_TRANSPORT_PROTOCOL}\" template=\"${RSYSLOG_REMOTE_TEMPLATE}\")" >> /etc/rsyslog.conf
   fi
 fi
 
