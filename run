@@ -38,6 +38,41 @@ dkimConfig()
     done
 }
 
+# rsyslog config
+rsyslogConfig()
+{
+    # Rsyslog base
+    /bin/echo -e '$ModLoad imuxsock\n$WorkDirectory /var/spool/rsyslog\n\ninclude(file="/etc/rsyslog.d/*.conf")\n\n*.*;auth,authpriv.none /dev/stdout\n' > /etc/rsyslog.conf
+
+    if [ "${RSYSLOG_TIMESTAMP,,}" == 'no' ] ; then
+        echo '$template noTimestampFormat,"%syslogtag%%msg%\n"' >> /etc/rsyslog.conf
+        echo '$ActionFileDefaultTemplate noTimestampFormat' >> /etc/rsyslog.conf
+    fi
+
+    if [ "${RSYSLOG_LOG_TO_FILE,,}" == 'yes' ] ; then
+        echo 'mail.* -/var/log/mail.log' >> /etc/rsyslog.conf
+    fi
+
+    if [ -z ${RSYSLOG_REMOTE_PORT} ] ; then
+        RSYSLOG_REMOTE_PORT=514
+    fi
+    if [ "${RSYSLOG_REMOTE_TRANSPORT_PROTOCOL}" == 'tcp' ] ; then
+        RSYSLOG_REMOTE_TRANSPORT_PROTOCOL='tcp'
+    else
+        RSYSLOG_REMOTE_TRANSPORT_PROTOCOL='udp'
+    fi
+    if [ -z ${RSYSLOG_REMOTE_TEMPLATE} ] ; then
+        RSYSLOG_REMOTE_TEMPLATE=RSYSLOG_ForwardFormat
+    fi
+    if [ ! -z ${RSYSLOG_REMOTE_HOST} ] ; then
+        echo "*.* action(type=\"omfwd\" target=\"${RSYSLOG_REMOTE_HOST,,}\" port=\"${RSYSLOG_REMOTE_PORT}\" protocol=\"${RSYSLOG_REMOTE_TRANSPORT_PROTOCOL}\" template=\"${RSYSLOG_REMOTE_TEMPLATE}\")" >> /etc/rsyslog.conf
+    fi
+}
+
+
+trap "service postfix stop; service opendkim stop; cat /var/spool/postfix/etc/tokens/sender.tokens.json > /etc/tokens/sender.tokens.json; pkill -TERM rsyslogd" SIGTERM SIGINT
+
+
 # Unclean container stop might leave pid files around and rsyslogd seems
 # sometimes falsely think it's already running if some other process
 # happens to have its old pid when starting.
@@ -63,8 +98,6 @@ for e in ${!OPENDKIM_*} ; do
   echo "${e:9} ${!e}" >> /etc/opendkim.conf
 done
 
-trap "service postfix stop; service opendkim stop; cat /var/spool/postfix/etc/tokens/sender.tokens.json > /etc/tokens/sender.tokens.json; pkill -TERM rsyslogd" SIGTERM SIGINT
-
 /bin/echo -e "\n\n"
 
 if [ ! -z "$OPENDKIM_DOMAINS" ] ; then
@@ -72,6 +105,7 @@ if [ ! -z "$OPENDKIM_DOMAINS" ] ; then
   /bin/echo -e "starting service OpenDKIM-"$(dpkg-query --show --showformat='${Version}' opendkim)" \c"
   service opendkim start
 fi
+
 /bin/echo -e "starting service Postfix-"$(dpkg-query --show --showformat='${Version}' postfix)" \c"
 service postfix start
 
@@ -79,36 +113,11 @@ service postfix start
 cmp --quiet /etc/tokens/sender.tokens.json /var/spool/postfix/etc/tokens/sender.tokens.json || \
   cp -vp /etc/tokens/sender.tokens.json /var/spool/postfix/etc/tokens/sender.tokens.json
 
-# Don't fiddle with existing config file (e.g. mounted from filesystem)
+# Don't fiddle with existing rsyslog config file (e.g. mounted from filesystem)
 if [ -e /etc/rsyslog.conf ]; then
   echo "Skipping /etc/rsyslog.conf generation - file already exists"
 else
-  # Rsyslog base
-  /bin/echo -e '$ModLoad imuxsock\n$WorkDirectory /var/spool/rsyslog\n\ninclude(file="/etc/rsyslog.d/*.conf")\n\n*.*;auth,authpriv.none /dev/stdout\n' > /etc/rsyslog.conf
-
-  if [ "${RSYSLOG_TIMESTAMP,,}" == 'no' ] ; then
-    echo '$template noTimestampFormat,"%syslogtag%%msg%\n"' >> /etc/rsyslog.conf
-    echo '$ActionFileDefaultTemplate noTimestampFormat' >> /etc/rsyslog.conf
-  fi
-
-  if [ "${RSYSLOG_LOG_TO_FILE,,}" == 'yes' ] ; then
-    echo 'mail.* -/var/log/mail.log' >> /etc/rsyslog.conf
-  fi
-
-  if [ -z ${RSYSLOG_REMOTE_PORT} ] ; then
-    RSYSLOG_REMOTE_PORT=514
-  fi
-  if [ "${RSYSLOG_REMOTE_TRANSPORT_PROTOCOL,,}" == 'tcp' ] ; then
-    RSYSLOG_REMOTE_TRANSPORT_PROTOCOL='tcp'
-  else
-    RSYSLOG_REMOTE_TRANSPORT_PROTOCOL='udp'
-  fi
-  if [ -z ${RSYSLOG_REMOTE_TEMPLATE} ] ; then
-    RSYSLOG_REMOTE_TEMPLATE=RSYSLOG_ForwardFormat
-  fi
-  if [ ! -z ${RSYSLOG_REMOTE_HOST} ] ; then
-    echo "*.* action(type=\"omfwd\" target=\"${RSYSLOG_REMOTE_HOST,,}\" port=\"${RSYSLOG_REMOTE_PORT}\" protocol=\"${RSYSLOG_REMOTE_TRANSPORT_PROTOCOL}\" template=\"${RSYSLOG_REMOTE_TEMPLATE}\")" >> /etc/rsyslog.conf
-  fi
+  rsyslogConfig
 fi
 
 /bin/echo -e "launching Rsyslog-"$(dpkg-query --show --showformat='${Version}' rsyslog)"\n"
