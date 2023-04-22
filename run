@@ -113,7 +113,7 @@ service postfix start
 cmp --quiet /etc/tokens/sender.tokens.json /var/spool/postfix/etc/tokens/sender.tokens.json || \
   cp -vp /etc/tokens/sender.tokens.json /var/spool/postfix/etc/tokens/sender.tokens.json
 
-# Don't fiddle with existing rsyslog config file (e.g. mounted from filesystem)
+# Don't fiddle with existing rsyslog config file
 if [ -e /etc/rsyslog.conf ]; then
   echo "Skipping /etc/rsyslog.conf generation - file already exists"
 else
