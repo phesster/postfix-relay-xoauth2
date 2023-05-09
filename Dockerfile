@@ -34,7 +34,7 @@ RUN \
     sasl2-bin \
     libgcc-s1 \
     tzdata \
-    nc-openbsd \
+    netcat-openbsd \
     rsyslog && \
   echo "deb https://ppa.launchpadcontent.net/sasl-xoauth2/stable/ubuntu/ jammy main" | tee /etc/apt/sources.list.d/sasl-xoauth2-ubuntu-stable-jammy.list && \
   gpg --recv-keys --keyserver keyserver.ubuntu.com 2E733F026005F791 && \
